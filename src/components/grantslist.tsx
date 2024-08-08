@@ -1,41 +1,79 @@
+import { Grant } from '@/interfaces/Grant';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { grantsTestData } from '../../data/grantsTestData';
+import { differenceInDays } from 'date-fns';
 
-const grantslist = [ //example data
-  {
-    id: 1,
-    title: 'Proposal Title 1',
-    submittedBy: 'John Doe',
-    date: 'August 6, 2024'
-  },
-  {
-    id: 2,
-    title: 'Proposal Title 2',
-    submittedBy: 'Jane Smith',
-    date: 'August 5, 2024'
-  },
-  {
-    id: 3,
-    title: 'Proposal Title 3',
-    submittedBy: 'Alice Johnson',
-    date: 'August 4, 2024'
-  }
-]
+interface GrantsListProps {
+  filter: string;
+}
 
-export default function GrantsList() {
+export default function GrantsList({ filter }: GrantsListProps) {
+  const [grantsList, setGrantsList] = useState<Grant[]>(grantsTestData);
+  const [filteredGrantsList, setFilteredGrantsList] =
+    useState<Grant[]>(grantsTestData);
+
+  useEffect(() => {
+    if (filter.length > 0) {
+      const filteredList = grantsList.filter((grant) => {
+        return grant.title.toLowerCase().includes(filter.toLowerCase());
+      });
+      setFilteredGrantsList(filteredList);
+    } else {
+      setFilteredGrantsList(grantsList);
+    }
+  }, [filter]);
+
+  const getDayDifference = (expiryDate: string) => {
+    return differenceInDays(new Date(expiryDate), new Date());
+  };
+
+  const getExpiresInDateText = (expiryDate: string) => {
+    const expiredDays = getDayDifference(expiryDate);
+
+    return expiredDays > 0
+      ? `Expires in ${expiredDays} day${expiredDays > 1 ? 's' : ''}`
+      : `Expired ${Math.abs(expiredDays)} day${
+          Math.abs(expiredDays) > 1 ? 's' : ''
+        } ago`;
+  };
+
   return (
-    <ul className="space-y-4">
-      {grantslist.map((grant, index) => (
-        <li key={index} className="bg-white shadow-lg rounded-lg p-4 flex justify-between items-center">
-          <div>
-            <h2 className="text-xl font-semibold">{grant.title}</h2>
-            <p className="text-gray-600">Submitted by: <span className="font-medium">{grant.submittedBy}</span></p>
-            <p className="text-gray-600">Date: <span className="font-medium">{grant.date}</span></p>
-          </div>
-          <Link href={`/proposals/view?id=${grant.id}`} >
-            <button className="bg-gray-500 text-white px-4 py-2 rounded-lg">View Details</button>
+    <ul className='flex flex-col gap-4'>
+      {filteredGrantsList.map((grant, index) => {
+        const isOpen = getDayDifference(grant.expiryDate) > 0;
+
+        return (
+          <Link key={index} href={`/proposals/${encodeURIComponent(grant.id)}`}>
+            <li className='shadow-sm rounded-3xl px-4 py-2 border hover:shadow-lg hover:border-2 hover:border-black hover:cursor-pointer'>
+              <div className='flex flex-col gap-1'>
+                <div className='flex justify-between items-center'>
+                  <p className='font-medium text-gray-500'>
+                    {getExpiresInDateText(grant.expiryDate)}
+                  </p>
+                  <p
+                    className={`border rounded-3xl py-1 px-2 text-sm ${
+                      isOpen ? 'border-green-800' : 'border-red-800'
+                    } font-bold flex items-center justify-center gap-2`}
+                  >
+                    <span
+                      className={`p-1.5 rounded-full block ${
+                        isOpen ? 'bg-green-700' : 'bg-red-700'
+                      }`}
+                    ></span>
+                    {isOpen ? 'Open' : 'Closed'}
+                  </p>
+                </div>
+                <h2 className='text-xl font-bold truncate'>{grant.title}</h2>
+                <p className='text-sm text-gray-600'>{grant.description}</p>
+                <p className='text-black font-bold text-right truncate'>
+                  {grant.submittedBy}
+                </p>
+              </div>
+            </li>
           </Link>
-        </li>
-      ))}
+        );
+      })}
     </ul>
-  )
+  );
 }
