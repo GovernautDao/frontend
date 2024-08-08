@@ -1,74 +1,35 @@
-import { ConnectKitButton } from "connectkit";
-import Logo from "../../icons/Logo";
-import { useState } from "react";
-import Link from "next/link";
+import { ConnectKitButton } from 'connectkit';
+import Logo from '../icons/Logo';
+import { useState } from 'react';
+import Link from 'next/link';
 
 export default function Navbar() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
-
   return (
-    <nav className="bg-white border-gray-200 dark:bg-gray-900 shadow-lg">
-      <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
-        <Link href="/" className="flex items-center space-x-3 rtl:space-x-reverse">
-          <Logo className="h-8" />
-          <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">Governaut</span>
+    <nav className='bg-white border-gray-200 shadow-lg'>
+      <div className='flex flex-wrap justify-between p-4'>
+        <Link
+          href='/'
+          className='flex items-center space-x-3 rtl:space-x-reverse'
+        >
+          <Logo className='h-8' />
+          <span className='self-center text-2xl whitespace-nowrap text-black font-bold'>
+            Governaut
+          </span>
         </Link>
-        <button
-          onClick={toggleMenu}
-          type="button"
-          className="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
-          aria-controls="navbar-default"
-          aria-expanded={isMenuOpen}
-        >
-          <span className="sr-only">Open main menu</span>
-          <svg
-            className="w-5 h-5"
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 17 14"
-          >
-            <path
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M1 1h15M1 7h15M1 13h15"
-            />
-          </svg>
-        </button>
-        <div
-          className={`${
-            isMenuOpen ? "block" : "hidden"
-          } w-full md:block md:w-auto`}
-          id="navbar-default"
-        >
-          <ul className="font-medium flex flex-col md:flex-row p-4 md:p-0 mt-4 md:mt-0 border border-gray-100 rounded-lg bg-gray-50 md:border-0 md:bg-white dark:bg-gray-800 md:dark:bg-gray-900 dark:border-gray-700 md:items-center">
-            <li className="mb-2 md:mb-0 md:mr-4">
+        <div className={`w-full md:block md:w-auto`} id='navbar-default'>
+          <ul className='font-medium flex flex-col md:flex-row p-4 md:p-0 mt-4 md:mt-0 border border-gray-100 rounded-lg bg-gray-50 md:border-0 md:bg-white md:items-center gap-2 text-co'>
+            <li className='mb-2 md:mb-0'>
               <Link
-                href="/"
-                className="block py-2 px-3 text-white bg-blue-700 rounded md:bg-transparent md:text-blue-700 md:p-0 dark:text-white md:dark:text-blue-500"
-                aria-current="page"
+                href='/'
+                className='block py-2 px-3 font-bold text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-lg'
+                aria-current='page'
               >
                 Grants
               </Link>
             </li>
-            <li className="mb-2 md:mb-0 md:mr-4">
-              <Link
-                href="page2"
-                className="block py-2 px-3 text-white bg-blue-700 rounded md:bg-transparent md:text-blue-700 md:p-0 dark:text-white md:dark:text-blue-500"
-                aria-current="page"
-              >
-                Page2
-              </Link>
-            </li>
-            <li className="md:flex md:items-center">
-              <div className="block py-2 px-3 md:py-0">
-                <ConnectKitButton />
+            <li className='md:flex md:items-center'>
+              <div className='block py-2 px-3 md:py-0'>
+                <ConnectKitButton theme='nouns' />
               </div>
             </li>
           </ul>
