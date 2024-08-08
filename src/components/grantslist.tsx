@@ -5,31 +5,24 @@ import { grantsTestData } from '../../data/grantsTestData';
 import { differenceInDays } from 'date-fns';
 
 interface GrantsListProps {
-  filter: string;
+  titleSearch: string;
 }
 
-export default function GrantsList({ filter }: GrantsListProps) {
+export default function GrantsList({ titleSearch }: GrantsListProps) {
   const [grantsList, setGrantsList] = useState<Grant[]>(grantsTestData);
   const [filteredGrantsList, setFilteredGrantsList] =
     useState<Grant[]>(grantsTestData);
 
   useEffect(() => {
-    if (filter.length > 0) {
-      const filteredList = grantsList.filter((grant) => {
-        return grant.title.toLowerCase().includes(filter.toLowerCase());
-      });
-      setFilteredGrantsList(filteredList);
-    } else {
-      setFilteredGrantsList(grantsList);
-    }
-  }, [filter]);
+    formatAndFilterGrants(titleSearch, grantsList);
+  }, [titleSearch, grantsList]);
 
-  const getDayDifference = (expiryDate: string) => {
+  const getDayDifferenceFromCurrentTime = (expiryDate: string) => {
     return differenceInDays(new Date(expiryDate), new Date());
   };
 
   const getExpiresInDateText = (expiryDate: string) => {
-    const expiredDays = getDayDifference(expiryDate);
+    const expiredDays = getDayDifferenceFromCurrentTime(expiryDate);
 
     return expiredDays > 0
       ? `Expires in ${expiredDays} day${expiredDays > 1 ? 's' : ''}`
@@ -38,10 +31,31 @@ export default function GrantsList({ filter }: GrantsListProps) {
         } ago`;
   };
 
+  const formatAndFilterGrants = (titleSearch: string, grantsList: Grant[]) => {
+    let finalList: Grant[] = [];
+
+    if (titleSearch.length > 0) {
+      finalList = grantsList.filter((grant) => {
+        return grant.title.toLowerCase().includes(titleSearch.toLowerCase());
+      });
+    } else {
+      finalList = grantsList;
+    }
+
+    const finalListWithExpiry = finalList.map((grant) => {
+      return {
+        ...grant,
+        expiryDate: getExpiresInDateText(grant.expiryDate),
+      };
+    });
+
+    setFilteredGrantsList(finalListWithExpiry);
+  };
+
   return (
     <ul className='flex flex-col gap-4'>
       {filteredGrantsList.map((grant, index) => {
-        const isOpen = getDayDifference(grant.expiryDate) > 0;
+        const isOpen = getDayDifferenceFromCurrentTime(grant.expiryDate) > 0;
 
         return (
           <Link key={index} href={`/proposals/${encodeURIComponent(grant.id)}`}>
@@ -49,7 +63,7 @@ export default function GrantsList({ filter }: GrantsListProps) {
               <div className='flex flex-col gap-1'>
                 <div className='flex justify-between items-center'>
                   <p className='font-medium text-gray-500'>
-                    {getExpiresInDateText(grant.expiryDate)}
+                    {grant.expiryDate}
                   </p>
                   <p
                     className={`border rounded-3xl py-1 px-2 text-sm ${
