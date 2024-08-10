@@ -1,6 +1,5 @@
 import { ConnectKitButton } from 'connectkit';
 import Logo from '../icons/Logo';
-import { useState } from 'react';
 import Link from 'next/link';
 
 export default function Navbar() {
@@ -20,11 +19,20 @@ export default function Navbar() {
           <ul className='font-medium flex flex-col md:flex-row p-4 md:p-0 mt-4 md:mt-0 border border-gray-100 rounded-lg bg-gray-50 md:border-0 md:bg-white md:items-center gap-2 text-co'>
             <li className='mb-2 md:mb-0'>
               <Link
-                href='/'
+                href='/grants'
                 className='block py-2 px-3 font-bold text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-lg'
                 aria-current='page'
               >
                 Grants
+              </Link>
+            </li>
+            <li className='mb-2 md:mb-0'>
+              <Link
+                href='/proposals'
+                className='block py-2 px-3 font-bold text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-lg'
+                aria-current='page'
+              >
+                Proposals
               </Link>
             </li>
             <li className='md:flex md:items-center'>
