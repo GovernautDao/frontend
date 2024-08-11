@@ -326,13 +326,16 @@ export default function ViewProposal() {
               )} ETH`}
             />
           </div>
-          <div className='mb-4'>
-            <label htmlFor='amount'>Amount</label>
+          <div className='mb-4 flex flex-col'>
+            <label htmlFor='amount' className='text-lg font-bold'>
+              Amount
+            </label>
             <input
               id='amount'
               title='amount'
               type='text'
               placeholder='Enter amount to contribute / withdraw in ETH'
+              className='w-1/2 p-2 border border-gray-300 rounded-lg mt-1'
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               required
