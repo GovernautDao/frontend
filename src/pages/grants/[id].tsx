@@ -7,6 +7,7 @@ import { grantsFromContract, proposalData } from '../../../data/grantsTestData';
 import TextSection from '@/components/textSection';
 import { ethers } from 'ethers';
 import { ContributionStatusFromContract } from '@/interfaces/ContributionStatusFromContract';
+import { baseSepolia } from 'viem/chains';
 
 // TODO: Ask user to give permission for ERC20 token transfer, but which token we using???
 export default function ViewProposal() {
@@ -19,7 +20,7 @@ export default function ViewProposal() {
     refetch: refetchGrant,
   } = useReadContract({
     abi: FUNDING_CONTRACT.abi,
-    address: FUNDING_CONTRACT[chainId ?? 0]?.address,
+    address: FUNDING_CONTRACT[baseSepolia.id]?.address,
     functionName: 'getGrantStatus',
     args: [parseInt(router.query.id as string)],
   });
@@ -29,7 +30,7 @@ export default function ViewProposal() {
     refetch: refetchContributionStatus,
   } = useReadContract({
     abi: FUNDING_CONTRACT.abi,
-    address: FUNDING_CONTRACT[chainId ?? 0]?.address,
+    address: FUNDING_CONTRACT[baseSepolia.id]?.address,
     functionName: 'getContributionStatus',
     args: [parseInt(router.query.id as string)],
     query: {
@@ -59,7 +60,7 @@ export default function ViewProposal() {
   const [amount, setAmount] = useState('');
 
   useEffect(() => {
-    if (!isGrantFetchLoading && grantData) {
+    if ((!isGrantFetchLoading && grantData) || isGrantFetchError) {
       // TODO: Find the proposal info in db
       // TODO: Once there is on chain data use that instead
       const grantId = parseInt(router.query.id as string);
@@ -86,7 +87,7 @@ export default function ViewProposal() {
 
       refetchContributionStatus();
     }
-  }, [grantData, isGrantFetchLoading]);
+  }, [grantData, isGrantFetchLoading, isGrantFetchError]);
 
   // figure out if the user can contribute
   useEffect(() => {
@@ -259,6 +260,7 @@ export default function ViewProposal() {
 
   return (
     <>
+      {isGrantFetchLoading && <div>Loading grant...</div>}
       {!grant && isGrantFetchError && <div>Error fetching grant...</div>}
       {grant && (
         <div className='m-10 bg-white border rounded-3xl p-10 shadow-sm border-1 border-gray-400'>

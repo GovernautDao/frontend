@@ -7,14 +7,16 @@ import { useAccount, useReadContracts } from 'wagmi';
 import { FUNDING_CONTRACT } from '@/contracts';
 import { ethers } from 'ethers';
 import { GrantFromContract } from '@/interfaces/GrantFromContract';
+import { baseSepolia } from 'viem/chains';
 
 const maxGrantId = 3;
 
 // TODO: replace X with the last grantId assigned once call is made available
 const getXGrantIds = (lastId: number, chainId?: number) => {
   if (!chainId) {
-    // TODO: throw an error visible to user
-    return console.error('Chain ID is required');
+    // // TODO: throw an error visible to user
+    // return console.error('Chain ID is required');
+    chainId = baseSepolia.id;
   }
 
   const grantIds = [];
@@ -55,7 +57,7 @@ export default function Grants() {
     if (result.isSuccess && grantsList.length === 0) {
       const grants = [
         ...(result.data as GrantFromContract[]).filter((data) =>
-          ethers.utils.isAddress(data.result.projectOwner)
+          ethers.utils.isAddress(data.result?.projectOwner)
         ),
         ...grantsFromContract,
       ];
