@@ -1,24 +1,96 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { grantsTestData } from '../../../data/grantsTestData';
-import { Grant } from '@/interfaces/Grant';
+import { grantsFromContract, proposalData } from '../../../data/grantsTestData';
 import { differenceInDays } from 'date-fns';
+import { GrantDetails } from '@/interfaces/GrantDetails';
+import { useAccount, useReadContracts } from 'wagmi';
+import { FUNDING_CONTRACT } from '@/contracts';
+import { ethers } from 'ethers';
+import { GrantFromContract } from '@/interfaces/GrantFromContract';
+
+const maxGrantId = 3;
+
+// TODO: replace X with the last grantId assigned once call is made available
+const getXGrantIds = (lastId: number, chainId?: number) => {
+  if (!chainId) {
+    // TODO: throw an error visible to user
+    return console.error('Chain ID is required');
+  }
+
+  const grantIds = [];
+
+  for (let i = 0; i <= lastId; i++) {
+    grantIds.push(i);
+  }
+
+  const calls = grantIds.map((id) => {
+    return {
+      abi: FUNDING_CONTRACT.abi,
+      // TODO: handle this better
+      address: FUNDING_CONTRACT[chainId]?.address ?? '0x000',
+      functionName: 'getGrantStatus',
+      args: [id],
+      chainId: chainId,
+    };
+  });
+
+  return calls;
+};
 
 export default function Grants() {
+  const { chainId } = useAccount();
+  const result = useReadContracts({
+    // TODO: fix the type issues here
+    contracts: getXGrantIds(maxGrantId, chainId) as any[],
+  });
+
   const [titleSearch, setTitleSearch] = useState('');
-  const [grantsList, setGrantsList] = useState<Grant[]>(grantsTestData);
-  const [filteredGrantsList, setFilteredGrantsList] =
-    useState<Grant[]>(grantsTestData);
+  //TODO: iterate from id 0 to until we stop getting ids in the contract using getGrantStatus
+  const [grantsList, setGrantsList] = useState<GrantDetails[]>([]);
+  const [filteredGrantsList, setFilteredGrantsList] = useState<GrantDetails[]>(
+    []
+  );
+
+  useEffect(() => {
+    if (result.isSuccess && grantsList.length === 0) {
+      const grants = [
+        ...(result.data as GrantFromContract[]).filter((data) =>
+          ethers.utils.isAddress(data.result.projectOwner)
+        ),
+        ...grantsFromContract,
+      ];
+
+      // TODO: figure out how to get the title/description for each of those grants
+      setGrantsList(
+        grants.map((grant, index) => {
+          return {
+            id: index,
+            projectOwner: grant.result.projectOwner,
+            startDate: new Date(Number(grant.result.startTimestamp) * 1000),
+            endDate: new Date(Number(grant.result.endTimestamp) * 1000),
+            goalAmount: grant.result.goalAmount,
+            totalContributed: grant.result.totalContributed,
+            numberOfClaimsMade: Number(grant.result.numberOfClaimsMade),
+            lastClaimDate: new Date(
+              Number(grant.result.lastClaimTimestamp) * 1000
+            ),
+            title: proposalData[index].title,
+            description: proposalData[index].description,
+          };
+        })
+      );
+    }
+  }, [result, grantsList]);
 
   useEffect(() => {
     formatAndFilterGrants(titleSearch, grantsList);
   }, [titleSearch, grantsList]);
 
-  const getDayDifferenceFromCurrentTime = (expiryDate: string) => {
-    return differenceInDays(new Date(expiryDate), new Date());
+  const getDayDifferenceFromCurrentTime = (expiryDate: Date) => {
+    return differenceInDays(expiryDate, new Date());
   };
 
-  const getExpiresInDateText = (expiryDate: string) => {
+  const getExpiresInDateText = (expiryDate: Date) => {
     const expiredDays = getDayDifferenceFromCurrentTime(expiryDate);
 
     return expiredDays > 0
@@ -28,8 +100,11 @@ export default function Grants() {
         } ago`;
   };
 
-  const formatAndFilterGrants = (titleSearch: string, grantsList: Grant[]) => {
-    let finalList: Grant[] = [];
+  const formatAndFilterGrants = (
+    titleSearch: string,
+    grantsList: GrantDetails[]
+  ) => {
+    let finalList: GrantDetails[] = [];
 
     if (titleSearch.length > 0) {
       finalList = grantsList.filter((grant) => {
@@ -42,11 +117,37 @@ export default function Grants() {
     const finalListWithExpiry = finalList.map((grant) => {
       return {
         ...grant,
-        expiryDateFormatted: getExpiresInDateText(grant.expiryDate),
+        expiryDateFormatted: getExpiresInDateText(grant.endDate),
       };
     });
 
     setFilteredGrantsList(finalListWithExpiry);
+  };
+
+  const getGrantState = (
+    endDate: Date,
+    numberOfClaimsMade: number
+  ): 'Open' | 'Ended' | 'Pending' => {
+    const expiredDays = getDayDifferenceFromCurrentTime(endDate);
+
+    if (expiredDays > 0) {
+      return 'Open';
+    } else if (expiredDays <= 0 && numberOfClaimsMade > 0) {
+      return 'Pending';
+    } else {
+      return 'Ended';
+    }
+  };
+
+  const getGrantStateColor = (grantState: 'Open' | 'Ended' | 'Pending') => {
+    switch (grantState) {
+      case 'Open':
+        return ['bg-green-700', 'border-green-800'];
+      case 'Ended':
+        return ['bg-red-700', 'border-red-800'];
+      case 'Pending':
+        return ['bg-orange-500', 'border-orange-600'];
+    }
   };
 
   return (
@@ -70,13 +171,14 @@ export default function Grants() {
       </div>
       <ul className='flex flex-col gap-4'>
         {filteredGrantsList.map((grant, index) => {
-          const isOpen = getDayDifferenceFromCurrentTime(grant.expiryDate) > 0;
-
+          const grantState = getGrantState(
+            grant.endDate,
+            grant.numberOfClaimsMade
+          );
+          const grantStateColorPair = getGrantStateColor(grantState);
+          console.log(grant);
           return (
-            <Link
-              key={index}
-              href={`/grants/${encodeURIComponent(grant.id)}`}
-            >
+            <Link key={index} href={`/grants/${encodeURIComponent(grant.id)}`}>
               <li className='shadow-sm rounded-3xl px-4 py-2 border hover:shadow-lg hover:border-2 hover:border-black hover:cursor-pointer'>
                 <div className='flex flex-col gap-1'>
                   <div className='flex justify-between items-center'>
@@ -84,23 +186,35 @@ export default function Grants() {
                       {grant.expiryDateFormatted}
                     </p>
                     <p
-                      className={`border rounded-3xl py-1 px-2 text-sm ${
-                        isOpen ? 'border-green-800' : 'border-red-800'
-                      } font-bold flex items-center justify-center gap-2`}
+                      className={`border rounded-3xl py-1 px-2 text-sm ${grantStateColorPair[1]} font-bold flex items-center justify-center gap-2`}
                     >
                       <span
-                        className={`p-1.5 rounded-full block ${
-                          isOpen ? 'bg-green-700' : 'bg-red-700'
-                        }`}
+                        className={`p-1.5 rounded-full block ${grantStateColorPair[0]}`}
                       ></span>
-                      {isOpen ? 'Open' : 'Closed'}
+                      {grantState}
                     </p>
                   </div>
                   <h2 className='text-xl font-bold truncate'>{grant.title}</h2>
                   <p className='text-sm text-gray-600'>{grant.description}</p>
-                  <p className='text-black font-bold text-right truncate'>
-                    {grant.submittedBy}
-                  </p>
+                  <div className='flex justify-between'>
+                    <div className='flex gap-4'>
+                      <p className='text-md font-semibold'>
+                        Goal:{' '}
+                        {ethers.utils.formatEther(grant.goalAmount.toString())}{' '}
+                        ETH
+                      </p>
+                      <p className='text-md font-semibold'>
+                        Raised:{' '}
+                        {ethers.utils.formatEther(
+                          grant.totalContributed.toString()
+                        )}{' '}
+                        ETH
+                      </p>
+                    </div>
+                    <p className='text-black font-bold text-right truncate'>
+                      {grant.projectOwner}
+                    </p>
+                  </div>
                 </div>
               </li>
             </Link>
