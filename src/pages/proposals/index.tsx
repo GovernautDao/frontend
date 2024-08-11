@@ -1,77 +1,97 @@
 import { useEffect, useState } from 'react';
-import { useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import {
+  useReadContract,
+  useWaitForTransactionReceipt,
+  useWriteContract,
+} from 'wagmi';
 import { GOVERNAUT_GOVERNANCE_CONTRACT } from '@/contracts';
 import Link from 'next/link';
-import { readContract } from '@wagmi/core'
+import { readContract } from '@wagmi/core';
 import { config } from '@/config/wagmi';
 import { ethers } from 'ethers';
+import { baseSepolia } from 'viem/chains';
+import { Proposal } from '@/interfaces/Proposal';
+import { proposalTestData } from '../../../data/proposalTestData';
 
 export default function Proposals() {
   const { data: hash, writeContract, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess: isConfirmed } =
+    useWaitForTransactionReceipt({ hash });
   const [titleSearch, setTitleSearch] = useState('');
   const [proposals, setProposals] = useState<any>([]);
 
   useEffect(() => {
     loadProposals();
   }, []);
-  
+
   useEffect(() => {
     if (isConfirming) {
-      console.log('Transaction is confirming...')
+      console.log('Transaction is confirming...');
     } else if (isConfirmed) {
-      console.log('Transaction confirmed successfully!')
+      console.log('Transaction confirmed successfully!');
     } else if (error) {
-      console.log('Error:', error)
+      console.log('Error:', error);
     }
   }, [isConfirming, isConfirmed, error]);
 
   const loadProposals = async () => {
-    const provider = new ethers.JsonRpcProvider('https://base-sepolia.g.alchemy.com/v2/9kDQm4NOLsXPnomPezfxUYPgdMYudqxh');
+    const provider = new ethers.providers.JsonRpcProvider(
+      'https://base-sepolia.g.alchemy.com/v2/9kDQm4NOLsXPnomPezfxUYPgdMYudqxh'
+    );
 
-    const contract = new ethers.Contract(GOVERNAUT_GOVERNANCE_CONTRACT.address, GOVERNAUT_GOVERNANCE_CONTRACT.abi, provider);
+    const contract = new ethers.Contract(
+      GOVERNAUT_GOVERNANCE_CONTRACT[baseSepolia.id]!.address,
+      GOVERNAUT_GOVERNANCE_CONTRACT.abi as any,
+      provider
+    );
 
     const filter = contract.filters.ProposalCreated();
     const fromBlock = 0;
 
     try {
-      const events = await contract.queryFilter(filter, fromBlock, "latest");
-      const formatted = await Promise.all(events.map(async event => {
-        const contractInterface = new ethers.Interface(GOVERNAUT_GOVERNANCE_CONTRACT.abi);
-        const decodedData = contractInterface.parseLog(event);
-        const state = await readContract(config, {
-          ...GOVERNAUT_GOVERNANCE_CONTRACT,
-          functionName: 'state',
-          args: [decodedData?.args[0]],
+      const events = await contract.queryFilter(filter, fromBlock, 'latest');
+      const formatted = await Promise.all(
+        events.map(async (event) => {
+          const contractInterface = new ethers.utils.Interface(
+            GOVERNAUT_GOVERNANCE_CONTRACT.abi as any
+          );
+          const decodedData = contractInterface.parseLog(event);
+          const state = await readContract(config, {
+            abi: GOVERNAUT_GOVERNANCE_CONTRACT.abi,
+            address: GOVERNAUT_GOVERNANCE_CONTRACT[baseSepolia.id]!.address,
+            functionName: 'state',
+            args: [decodedData?.args[0]],
+          });
+
+          return {
+            state,
+            id: decodedData?.args[0],
+            proposalId: decodedData?.args[0].toString(),
+            proposer: decodedData?.args[1],
+            description: decodedData?.args[8],
+            blockNumber: event.blockNumber,
+            transactionHash: event.transactionHash,
+          };
         })
-        
-        return {
-          state,
-          id: decodedData?.args[0],
-          proposalId: decodedData?.args[0].toString(),
-          proposer: decodedData?.args[1],
-          description: decodedData?.args[8],
-          blockNumber: event.blockNumber,
-          transactionHash: event.transactionHash,
-        };
-      }));
-      console.log(formatted);
-      setProposals(formatted);
+      );
+      setProposals([...formatted, ...proposalTestData]);
     } catch (error) {
-        console.error("Error fetching past events:", error);
+      console.error('Error fetching past events:', error);
     }
-  }
+  };
 
   const castVote = async (proposalId: string, vote: number) => {
-    console.log("Casting vote for:", proposalId, "with vote:", vote);
-    const proposalIdBigInt = typeof proposalId === 'string' ? BigInt(proposalId) : proposalId;
+    console.log('Casting vote for:', proposalId, 'with vote:', vote);
+    const proposalIdBigInt =
+      typeof proposalId === 'string' ? BigInt(proposalId) : proposalId;
 
-    writeContract({ 
-      ...GOVERNAUT_GOVERNANCE_CONTRACT,
+    writeContract({
+      abi: GOVERNAUT_GOVERNANCE_CONTRACT.abi,
+      address: GOVERNAUT_GOVERNANCE_CONTRACT[baseSepolia.id]!.address,
       functionName: 'castVote',
       args: [proposalIdBigInt, vote],
     });
-  }
+  };
 
   return (
     <div className='w-screen px-14 py-4'>
@@ -93,35 +113,51 @@ export default function Proposals() {
         </div>
       </div>
       <div className='space-y-6'>
-        {proposals.filter((proposal: any) => proposal.description.toLowerCase().includes(titleSearch.toLowerCase())).map((proposal: any) => (
-          <div key={proposal.proposalId} className="border p-6 rounded-lg shadow-md bg-white hover:shadow-lg transition-shadow duration-300">
-            <h2 className="text-xl font-semibold mb-4">{proposal.description}</h2>
-            <p className="text-gray-700 mb-2"><strong>Proposer:</strong> {proposal.proposer}</p>
-            <p className="text-gray-700 mb-2"><strong>Block Number:</strong> {proposal.blockNumber}</p>
-            <p className="text-gray-700 mb-4"><strong>Transaction Hash:</strong> {proposal.transactionHash}</p>
-            <div className='flex justify-between mt-4 space-x-4'>
-            <button
-              onClick={() => castVote(proposal.proposalId, 1)}
-              className='flex-1 text-white font-bold py-2 px-4 rounded-3xl bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300 transition-all duration-200'
+        {proposals
+          .filter((proposal: any) =>
+            proposal.description
+              .toLowerCase()
+              .includes(titleSearch.toLowerCase())
+          )
+          .map((proposal: Proposal) => (
+            <div
+              key={proposal.proposalId}
+              className='border p-6 rounded-lg shadow-md bg-white hover:shadow-lg transition-shadow duration-300'
             >
-              Yes
-            </button>
-            <button
-              onClick={() => castVote(proposal.proposalId, 0)}
-              className='flex-1 text-white font-bold py-2 px-4 rounded-3xl bg-gray-500 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all duration-200'
-            >
-              Abstain
-            </button>
-            <button
-              onClick={() => castVote(proposal.proposalId, 2)}
-              className='flex-1 text-white font-bold py-2 px-4 rounded-3xl bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300 transition-all duration-200'
-            >
-              No
-            </button>
-          </div>
-
-          </div>
-        ))}
+              <h2 className='text-xl font-semibold mb-4'>
+                {proposal.description}
+              </h2>
+              <p className='text-gray-700 mb-2'>
+                <strong>Proposer:</strong> {proposal.proposer}
+              </p>
+              <p className='text-gray-700 mb-2'>
+                <strong>Block Number:</strong> {proposal.blockNumber}
+              </p>
+              <p className='text-gray-700 mb-4'>
+                <strong>Transaction Hash:</strong> {proposal.transactionHash}
+              </p>
+              <div className='flex justify-between mt-4 space-x-4'>
+                <button
+                  onClick={() => castVote(proposal.proposalId, 1)}
+                  className='flex-1 text-white font-bold py-2 px-4 rounded-3xl bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300 transition-all duration-200'
+                >
+                  Yes
+                </button>
+                <button
+                  onClick={() => castVote(proposal.proposalId, 0)}
+                  className='flex-1 text-white font-bold py-2 px-4 rounded-3xl bg-gray-500 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all duration-200'
+                >
+                  Abstain
+                </button>
+                <button
+                  onClick={() => castVote(proposal.proposalId, 2)}
+                  className='flex-1 text-white font-bold py-2 px-4 rounded-3xl bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300 transition-all duration-200'
+                >
+                  No
+                </button>
+              </div>
+            </div>
+          ))}
       </div>
     </div>
   );

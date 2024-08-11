@@ -1,8 +1,13 @@
 export interface Proposal {
-  id: number;
-  expiryDate: string;
+  id?: number;
+  expiryDate?: string;
   expiryDateFormatted?: string;
-  title: string;
+  title?: string;
+  submittedBy?: string;
+  
+  proposalId: string;
   description: string;
-  submittedBy: string;
+  proposer: string;
+  blockNumber: number;
+  transactionHash: string;
 }
