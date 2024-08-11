@@ -99,7 +99,12 @@ export default function CreateGrant() {
   return (
     <div className='min-h-screen flex items-center justify-center bg-gray-100 w-full'>
       <div className='bg-white p-8 rounded-3xl shadow-md w-full max-w-3xl'>
-        <h2 className='text-2xl mb-4'>Create Grant</h2>
+        <div className='mb-4'>
+          <h2 className='text-2xl'>Create Grant</h2>
+          <span className='mt-1 text-sm text-gray-500'>
+            Important: Proposal must be approved before a grant can be issued.
+          </span>
+        </div>
         <form onSubmit={(e) => handleSubmit(e)}>
           <div className='mb-4'>
             <label htmlFor='title' className='block text-gray-700'>
